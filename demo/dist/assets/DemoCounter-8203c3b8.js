@@ -1,0 +1,1 @@
+import{h as t,o,c as n,a as e}from"./index-1aee654d.js";const s=e("button",null,"-",-1),_=e("span",null,"Current value: 0",-1),a=e("button",null,"+",-1),c=[s,_,a],i={__name:"DemoCounter",setup(r){return t(0),(l,u)=>(o(),n("div",null,c))}};export{i as default};
