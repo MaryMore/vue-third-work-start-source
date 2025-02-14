@@ -1,20 +1,22 @@
 <template>
   <div class="task-card__comments">
-    <h2 class="task-card__title">Комментарии</h2>
+    <h2 class="task-card__title">
+      Комментарии
+    </h2>
     <div class="comments">
       <!--      Список комментариев-->
       <ul class="comments__list">
         <li
-          v-for="comment in comments"
-          :key="comment.id"
-          class="comments__item"
+            v-for="comment in comments"
+            :key="comment.id"
+            class="comments__item"
         >
           <div class="comments__user">
             <img
-              :src="getImage(comment.user.avatar)"
-              :alt="comment.user.name"
-              width="30"
-              height="30"
+                :src="getPublicImage(comment.user.avatar)"
+                :alt="comment.user.name"
+                width="30"
+                height="30"
             />
             {{ comment.user.name }}
           </div>
@@ -23,17 +25,22 @@
       </ul>
 
       <!--      Блок добавления нового комментария-->
-      <form v-if="user" action="#" class="comments__form" method="post">
+      <form
+          v-if="user"
+          action="#"
+          class="comments__form"
+          method="post"
+      >
         <app-textarea
-          v-model="newComment"
-          name="comment_text"
-          placeholder="Введите текст комментария"
-          :error-text="validations.newComment.error"
+            v-model="newComment"
+            name="comment_text"
+            placeholder="Введите текст комментария"
+            :error-text="validations.newComment.error"
         />
         <app-button
-          class="comments__form__button"
-          :type="'submit'"
-          @click.prevent="submit"
+            class="comments__form__button"
+            :type="'submit'"
+            @click.prevent="submit"
         >
           Написать комментарий
         </app-button>
@@ -43,66 +50,58 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
-import users from "@/mocks/users.json";
-import {
-  validateFields,
-  clearValidationErrors,
-} from "../../../common/validator";
-import AppTextarea from "@/common/components/AppTextarea.vue";
-import AppButton from "@/common/components/AppButton.vue";
-import { getImage } from "@/common/helpers";
+import { ref, computed, watch } from 'vue'
+import { validateFields, clearValidationErrors } from '../../../common/validator'
+import AppTextarea from '@/common/components/AppTextarea.vue'
+import AppButton from '@/common/components/AppButton.vue'
+import { getPublicImage } from '@/common/helpers'
+import { useAuthStore, useCommentsStore } from '@/stores'
+
+const authStore = useAuthStore()
+const commentsStore = useCommentsStore()
 
 const props = defineProps({
   taskId: {
     type: Number,
-    required: true,
+    required: true
   },
-  comments: {
-    type: Array,
-    default: () => [],
-  },
-});
+})
 
-const emits = defineEmits(["createNewComment"]);
+const emits = defineEmits(['createNewComment'])
 
-const newComment = ref("");
+const newComment = ref('')
 const validations = ref({
   newComment: {
-    error: "",
-    rules: ["required"],
-  },
-});
+    error: '',
+    rules: ['required']
+  }
+})
 
-// Позже будет добавлен залогиненый пользователь. До этого будем использовать первого пользователя в списке
-const user = computed(() => users[0]);
-
+const user = authStore.user
+const comments = computed(() => {
+  return commentsStore.getCommentsByTaskId(props.taskId)
+})
 // Отслеживаем значение поля комментария и очищаем ошибку при изменении
 watch(newComment, () => {
   if (validations.value.newComment.error) {
-    clearValidationErrors(validations.value);
+    clearValidationErrors(validations.value)
   }
-});
+})
 
-const submit = function () {
+const submit = async function () {
   // Проверяем валидно ли поле комментария
-  if (!validateFields({ newComment }, validations.value)) return;
+  if (!validateFields({ newComment }, validations.value)) return
   // Создаем объект комментария
   const comment = {
     text: newComment.value,
     taskId: props.taskId,
-    userId: user.value.id,
-    user: {
-      id: user.value.id,
-      name: user.value.name,
-      avatar: user.value.avatar,
-    },
-  };
-  // Отправляем комментарий в родительский компонент
-  emits("createNewComment", comment);
+    userId: user.id,
+  }
+  // Создаем комментарий
+  await commentsStore.addComment(comment)
   // Очищаем поле комментария
-  newComment.value = "";
-};
+  newComment.value = ''
+}
 </script>
 
 <style lang="scss" scoped>

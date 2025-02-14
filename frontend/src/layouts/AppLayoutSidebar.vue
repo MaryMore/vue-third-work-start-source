@@ -1,100 +1,89 @@
 <template>
-    <!--  Отслеживает, в какую колонку передана задача-->
-    <app-drop
-        class="backlog"
-        :class="{ 'backlog--hide': state.backlogIsHidden }"
-        @drop="moveTask"
+  <!--  Отслеживает в какую колонку передана задача-->
+  <app-drop
+    class="backlog"
+    :class="{ 'backlog--hide': state.backlogIsHidden }"
+    @drop="moveTask"
+  >
+    <!--  Отвечает за открытие/закрытие беклога-->
+    <button
+      class="backlog__title"
+      @click="state.backlogIsHidden = !state.backlogIsHidden"
     >
-      <!--  Отвечает за открытие и закрытие бэклога-->
-      <button
-          class="backlog__title"
-          @click="state.backlogIsHidden = !state.backlogIsHidden"
-      >
-        <span>
-          Бэклог
-        </span>
-      </button>
-      <div class="backlog__content">
-        <div class="backlog__scroll">
-          <div class="backlog__collapse">
-            <div class="backlog__user">
-              <div class="backlog__account">
-                <img
-                    src="@/assets/img/user6.jpg"
-                    alt="Ваш аватар"
-                    width="32"
-                    height="32"
-                />
-                Игорь Пятин
-              </div>
-  
-              <div class="backlog__counter">
-                {{ sidebarTasks.length }}
-              </div>
+      <span> Бэклог </span>
+    </button>
+    <div class="backlog__content">
+      <div class="backlog__scroll">
+        <div class="backlog__collapse">
+          <div class="backlog__user">
+            <div class="backlog__account">
+              <img :src="userImage" alt="Ваш аватар" width="32" height="32" />
+              {{ authStore.user.name }}
             </div>
-  
-            <div class="backlog__target-area">
-              <!--  Задачи в бэклоге-->
-              <task-card
-                  v-for="task in sidebarTasks"
-                  :key="task.id"
+
+            <div class="backlog__counter">
+              {{ tasksStore.sidebarTasks.length }}
+            </div>
+          </div>
+
+          <div class="backlog__target-area">
+            <!--  Задачи в беклоге-->
+            <transition-group name="tasks">
+              <div v-for="task in tasksStore.sidebarTasks" :key="task.id">
+                <task-card
                   :task="task"
                   class="backlog__task"
                   @drop="moveTask($event, task)"
-              />
-            </div>
+                />
+              </div>
+            </transition-group>
           </div>
         </div>
       </div>
-    </app-drop>
-  </template>
+    </div>
+  </app-drop>
+</template>
 
 <script setup>
-import { reactive, computed } from 'vue'
-import AppDrop from '@/common/components/AppDrop.vue'
-import TaskCard from '@/modules/tasks/components/TaskCard.vue'
-import { getTargetColumnTasks, addActive } from '@/common/helpers'
+import { reactive } from "vue";
+import AppDrop from "@/common/components/AppDrop.vue";
+import TaskCard from "@/modules/tasks/components/TaskCard.vue";
+import {
+  getTargetColumnTasks,
+  addActive,
+  getPublicImage,
+} from "@/common/helpers";
+import { useTasksStore, useAuthStore } from "@/stores";
 
-const props = defineProps({
-  tasks: {
-    type: Array,
-    required: true
-  }
-})
+const tasksStore = useTasksStore();
+const authStore = useAuthStore();
 
-const state = reactive({ backlogIsHidden: false })
+const state = reactive({ backlogIsHidden: false });
 
-// Фильтруем задачи, которые относятся к бэклогу (columnId === null)
-const sidebarTasks = computed(() => {
-  return props.tasks
-      .filter(task => !task.columnId)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-})
+const userImage = getPublicImage(authStore.user.avatar);
 
-const emits = defineEmits(['updateTasks'])
-
-function moveTask (active, toTask) {
-  // Не обновляем массив, если задача не перемещалась
+function moveTask(active, toTask) {
+  // Не обновляем массив если задача фактически не перемещалась
   if (toTask && active.id === toTask.id) {
-    return
+    return;
   }
 
-  const toColumnId = null
+  const toColumnId = null;
   // Получить задачи для текущей колонки
-  const targetColumnTasks = getTargetColumnTasks(toColumnId, props.tasks)
-  const activeClone = { ...active, columnId: toColumnId }
+  const targetColumnTasks = getTargetColumnTasks(toColumnId, tasksStore.tasks);
+  const activeClone = { ...active, columnId: toColumnId };
   // Добавить активную задачу в колонку
-  const resultTasks = addActive(activeClone, toTask, targetColumnTasks)
-  const tasksToUpdate = []
+  const resultTasks = addActive(activeClone, toTask, targetColumnTasks);
+  const tasksToUpdate = [];
 
   // Отсортировать задачи в колонке
   resultTasks.forEach((task, index) => {
     if (task.sortOrder !== index || task.id === active.id) {
-      const newTask = { ...task, sortOrder: index }
-      tasksToUpdate.push(newTask)
+      const newTask = { ...task, sortOrder: index };
+      tasksToUpdate.push(newTask);
     }
-  })
-  emits('updateTasks', tasksToUpdate)
+  });
+  tasksStore.updateTasks(tasksToUpdate);
 }
 </script>
 
@@ -270,5 +259,17 @@ function moveTask (active, toTask) {
     margin-bottom: 11px;
     margin-left: 12px;
   }
+}
+
+.tasks-enter-active,
+.tasks-leave-active {
+  transition: all $animationSpeed ease;
+}
+
+.tasks-enter,
+.tasks-leave-to {
+  transform: scale(1.1);
+
+  opacity: 0;
 }
 </style>
